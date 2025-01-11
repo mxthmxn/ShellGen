@@ -4,18 +4,19 @@
 
 enum InstructionType : int
 {
+	ANTIDISASSEMBLY,
 	ROR,
 	ROL,
 	ADD,
 	SUB,
 	XOR,
-	CALL
+	CALL,
 };
 
 std::random_device rd;
 std::mt19937_64 gen( rd( ) );
 
-constexpr uint16_t count_of_instruction_types = 6;
+constexpr uint16_t count_of_instruction_types = 7;
 constexpr uint32_t bigger_instruction_length = 13;
 constexpr uint32_t ret_instruction_length = 1;
 
@@ -44,6 +45,10 @@ void mxthmxn::ShellGen::generate_call_recursive( unsigned char* decrypt_shellcod
 
 		switch ( shellcode_type )
 		{
+		case ANTIDISASSEMBLY:
+		{
+
+		}
 		case ROR: // 
 		{
 			unsigned char ror_rax_shellcode [ ] = {
@@ -210,7 +215,8 @@ void mxthmxn::ShellGen::generate( unsigned char* output_decrypt_shellcode, unsig
 	std::uniform_int_distribution<uint16_t> dist8( 1, UINT8_MAX );
 
 	unsigned char initial_shellcode [ ] = {
-		0x48, 0x8b, 0xc1	// mov rax, rcx
+		0x48, 0x8b, 0xc1,	// mov rax, rcx
+		0x74, 0x03, 0x75, 0x01, 0xe8 // jz 3 jne 1 e8
 	};
 	unsigned char end_shellcode [ ] = {
 		0xc3				// ret
@@ -229,7 +235,24 @@ void mxthmxn::ShellGen::generate( unsigned char* output_decrypt_shellcode, unsig
 
 		switch ( shellcode_type )
 		{
-			case ROR: // 
+			case ANTIDISASSEMBLY:
+			{
+				unsigned char antidisassembly_shellcode [ ] = {
+						0x74, 0x03, 0x75, 0x01, 0xe8 // jz 3 jne 1 e8
+				};
+
+				const auto instruction_size = sizeof( antidisassembly_shellcode );
+				const auto encrypt_bytes = output_encrypt_shellcode + sizeof( initial_shellcode ) + bytes_filled;
+				const auto decrypt_bytes = output_decrypt_shellcode + shellcode_size - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+
+				memcpy( encrypt_bytes, antidisassembly_shellcode, instruction_size );
+				memcpy( decrypt_bytes, antidisassembly_shellcode, instruction_size );
+
+				bytes_filled += instruction_size;
+				bytes_to_fill -= instruction_size;
+				break;
+			}
+			case ROR:
 			{
 				unsigned char ror_rax_shellcode [ ] = {
 					0x48, 0xc1, 0xc8, 0x00,	// ror rax, 0
