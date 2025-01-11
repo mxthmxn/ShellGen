@@ -5,18 +5,22 @@
 enum InstructionType : int
 {
 	ANTIDISASSEMBLY,
+	ADD_KEY,
+	SUB_KEY,
+	XOR_KEY,
 	ROR,
 	ROL,
 	ADD,
 	SUB,
 	XOR,
-	CALL,
+	NOT,
+	CALL
 };
 
 std::random_device rd;
 std::mt19937_64 gen( rd( ) );
 
-constexpr uint16_t count_of_instruction_types = 7;
+constexpr uint16_t count_of_instruction_types = 11;
 constexpr uint32_t bigger_instruction_length = 13;
 constexpr uint32_t ret_instruction_length = 1;
 
@@ -49,7 +53,61 @@ void mxthmxn::ShellGen::generate_call_recursive( unsigned char* decrypt_shellcod
 		{
 
 		}
-		case ROR: // 
+		case ADD_KEY:
+		{
+			unsigned char add_key_shellcode [ ] = {
+				0x48, 0x01, 0xd0	// add rax, rdx
+			};
+			unsigned char sub_key_shellcode [ ] = {
+				0x48, 0x29, 0xd0,	// sub rax, rdx
+			};
+			const auto instruction_size = sizeof( add_key_shellcode );
+			const auto encrypt_bytes = encrypt_shellcode + bytes_filled;
+			const auto decrypt_bytes = decrypt_shellcode + shellcode_bytes - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+
+			memcpy( encrypt_bytes, add_key_shellcode, instruction_size );
+			memcpy( decrypt_bytes, sub_key_shellcode, instruction_size );
+
+			bytes_filled += instruction_size;
+			bytes_to_fill -= instruction_size;
+			break;
+		}
+		case SUB_KEY:
+		{
+			unsigned char sub_key_shellcode [ ] = {
+				0x48, 0x29, 0xd0,	// sub rax, rdx
+			};
+			unsigned char add_key_shellcode [ ] = {
+				0x48, 0x01, 0xd0	// add rax, rdx
+			};
+			const auto instruction_size = sizeof( sub_key_shellcode );
+			const auto encrypt_bytes = encrypt_shellcode + bytes_filled;
+			const auto decrypt_bytes = decrypt_shellcode + shellcode_bytes - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+
+			memcpy( encrypt_bytes, sub_key_shellcode, instruction_size );
+			memcpy( decrypt_bytes, add_key_shellcode, instruction_size );
+
+			bytes_filled += instruction_size;
+			bytes_to_fill -= instruction_size;
+			break;
+		}
+		case XOR_KEY:
+		{
+			unsigned char xor_key_shellcode [ ] = {
+				0x48, 0x31, 0xd0
+			};
+			const auto instruction_size = sizeof( xor_key_shellcode );
+			const auto encrypt_bytes = encrypt_shellcode + bytes_filled;
+			const auto decrypt_bytes = decrypt_shellcode + shellcode_bytes - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+
+			memcpy( encrypt_bytes, xor_key_shellcode, instruction_size );
+			memcpy( decrypt_bytes, xor_key_shellcode, instruction_size );
+
+			bytes_filled += instruction_size;
+			bytes_to_fill -= instruction_size;
+			break;
+		}
+		case ROR:
 		{
 			unsigned char ror_rax_shellcode [ ] = {
 				0x48, 0xc1, 0xc8, 0x00,	// ror rax, 0
@@ -160,6 +218,23 @@ void mxthmxn::ShellGen::generate_call_recursive( unsigned char* decrypt_shellcod
 
 			memcpy( encrypt_bytes, xor_rax_shellcode, instruction_size );
 			memcpy( decrypt_bytes, xor_rax_shellcode, instruction_size );
+
+			bytes_filled += instruction_size;
+			bytes_to_fill -= instruction_size;
+			break;
+		}
+		case NOT:
+		{
+			unsigned char not_shellcode [ ] = {
+				0x48, 0xf7, 0xd0 // not rax
+			};
+
+			const auto instruction_size = sizeof( not_shellcode );
+			const auto encrypt_bytes = encrypt_shellcode + bytes_filled;
+			const auto decrypt_bytes = decrypt_shellcode + shellcode_bytes - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+
+			memcpy( encrypt_bytes, not_shellcode, instruction_size );
+			memcpy( decrypt_bytes, not_shellcode, instruction_size );
 
 			bytes_filled += instruction_size;
 			bytes_to_fill -= instruction_size;
@@ -363,6 +438,76 @@ void mxthmxn::ShellGen::generate( unsigned char* output_decrypt_shellcode, unsig
 
 				memcpy( encrypt_bytes, xor_rax_shellcode, instruction_size );
 				memcpy( decrypt_bytes, xor_rax_shellcode, instruction_size );
+
+				bytes_filled += instruction_size;
+				bytes_to_fill -= instruction_size;
+				break;
+			}
+			case NOT:
+			{
+				unsigned char not_shellcode [ ] = {
+					0x48, 0xf7, 0xd0 // not rax
+				};
+				const auto instruction_size = sizeof( not_shellcode );
+				const auto encrypt_bytes = output_encrypt_shellcode + sizeof( initial_shellcode ) + bytes_filled;
+				const auto decrypt_bytes = output_decrypt_shellcode + shellcode_size - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+
+				memcpy( encrypt_bytes, not_shellcode, instruction_size );
+				memcpy( decrypt_bytes, not_shellcode, instruction_size );
+
+				bytes_filled += instruction_size;
+				bytes_to_fill -= instruction_size;
+				break;
+			}
+			case ADD_KEY:
+			{
+				unsigned char add_key_shellcode [ ] = {
+					0x48, 0x01, 0xd0	// add rax, rdx
+				};
+				unsigned char sub_key_shellcode [ ] = {
+					0x48, 0x29, 0xd0,	// sub rax, rdx
+				};
+				const auto instruction_size = sizeof( add_key_shellcode );
+				const auto encrypt_bytes = output_encrypt_shellcode + sizeof( initial_shellcode ) + bytes_filled;
+				const auto decrypt_bytes = output_decrypt_shellcode + shellcode_size - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+
+				memcpy( encrypt_bytes, add_key_shellcode, instruction_size );
+				memcpy( decrypt_bytes, sub_key_shellcode, instruction_size );
+
+				bytes_filled += instruction_size;
+				bytes_to_fill -= instruction_size;
+				break;
+			}
+			case SUB_KEY:
+			{
+				unsigned char sub_key_shellcode [ ] = {
+					0x48, 0x29, 0xd0,	// sub rax, rdx
+				};
+				unsigned char add_key_shellcode [ ] = {
+					0x48, 0x01, 0xd0	// add rax, rdx
+				};
+				const auto instruction_size = sizeof( sub_key_shellcode );
+				const auto encrypt_bytes = output_encrypt_shellcode + sizeof( initial_shellcode ) + bytes_filled;
+				const auto decrypt_bytes = output_decrypt_shellcode + shellcode_size - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+
+				memcpy( encrypt_bytes, sub_key_shellcode, instruction_size );
+				memcpy( decrypt_bytes, add_key_shellcode, instruction_size );
+
+				bytes_filled += instruction_size;
+				bytes_to_fill -= instruction_size;
+				break;
+			}
+			case XOR_KEY:
+			{
+				unsigned char xor_key_shellcode [ ] = {
+					0x48, 0x31, 0xd0	// xor rax, rdx
+				};
+				const auto instruction_size = sizeof( xor_key_shellcode );
+				const auto encrypt_bytes = output_encrypt_shellcode + sizeof( initial_shellcode ) + bytes_filled;
+				const auto decrypt_bytes = output_decrypt_shellcode + shellcode_size - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+
+				memcpy( encrypt_bytes, xor_key_shellcode, instruction_size );
+				memcpy( decrypt_bytes, xor_key_shellcode, instruction_size );
 
 				bytes_filled += instruction_size;
 				bytes_to_fill -= instruction_size;

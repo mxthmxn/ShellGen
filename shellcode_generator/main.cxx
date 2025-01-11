@@ -17,9 +17,9 @@ int main()
 
 	printf( "example pointer : %p\n", example_pointer );
 
-	using encrypt_routine_t = void* ( * )( void* );
-	const auto encrypted = reinterpret_cast< encrypt_routine_t >( encrypt_shellcode )( example_pointer );
-	const auto decrypted = reinterpret_cast< encrypt_routine_t >( decrypt_shellcode )( encrypted );
+	using encrypt_routine_t = void* ( * )( void*, void* );
+	const auto encrypted = reinterpret_cast< encrypt_routine_t >( encrypt_shellcode )( example_pointer, reinterpret_cast< void* >( 0xdeadbeefdead ) );
+	const auto decrypted = reinterpret_cast< encrypt_routine_t >( decrypt_shellcode )( encrypted, reinterpret_cast< void* >( 0xdeadbeefdead ) );
 
 	printf( "encrypted : %p | decrypted : %p\n", encrypted, decrypted );
 
