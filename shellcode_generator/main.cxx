@@ -13,7 +13,7 @@ int main()
 
 	mxthmxn::ShellGen::generate( decrypt_shellcode, encrypt_shellcode, shellcode_size );
 
-	const auto example_pointer = static_cast< void* >( AllocConsole );
+	const auto example_pointer = static_cast< void* >( GetWindowThreadProcessId );
 
 	printf( "example pointer : %p\n", example_pointer );
 

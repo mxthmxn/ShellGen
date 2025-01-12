@@ -4,7 +4,9 @@
 
 enum InstructionType : int
 {
-	ANTIDISASSEMBLY,
+	ANTIDISASSEMBLY_JN,
+	ANTIDISASSEMBLY_CALL,
+	ANTISTACKFRAME,
 	ADD_KEY,
 	SUB_KEY,
 	XOR_KEY,
@@ -20,8 +22,8 @@ enum InstructionType : int
 std::random_device rd;
 std::mt19937_64 gen( rd( ) );
 
-constexpr uint16_t count_of_instruction_types = 11;
-constexpr uint32_t bigger_instruction_length = 13;
+constexpr uint16_t count_of_instruction_types = 13;
+constexpr uint32_t bigger_instruction_length = 26;
 constexpr uint32_t ret_instruction_length = 1;
 
 void mxthmxn::ShellGen::generate_call_recursive( unsigned char* decrypt_shellcode, unsigned char* encrypt_shellcode,
@@ -49,9 +51,63 @@ void mxthmxn::ShellGen::generate_call_recursive( unsigned char* decrypt_shellcod
 
 		switch ( shellcode_type )
 		{
-		case ANTIDISASSEMBLY:
+		case ANTIDISASSEMBLY_JN:
 		{
+			unsigned char shellcode [ ] = {
+						0x74, 0x03, 0x75, 0x01, 0xe8 // jz 3 jne 1 e8
+			};
 
+			const auto instruction_size = sizeof( shellcode );
+			const auto encrypt_bytes = encrypt_shellcode + bytes_filled;
+			const auto decrypt_bytes = decrypt_shellcode + shellcode_bytes - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+
+			memcpy( encrypt_bytes, shellcode, instruction_size );
+			memcpy( decrypt_bytes, shellcode, instruction_size );
+
+			bytes_filled += instruction_size;
+			bytes_to_fill -= instruction_size;
+			break;
+		}
+		case ANTIDISASSEMBLY_CALL:
+		{
+			unsigned char shellcode [ ] = {
+					   0xe8, 0x00, 0x00, 0x00, 0x00,	// call +5
+					   0x83, 0x04, 0x24, 0x05,			// add [rsp], 5
+					   0xc3,							// retn
+			};
+
+			const auto instruction_size = sizeof( shellcode );
+			const auto encrypt_bytes = encrypt_shellcode + bytes_filled;
+			const auto decrypt_bytes = decrypt_shellcode + shellcode_bytes - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+
+			memcpy( encrypt_bytes, shellcode, instruction_size );
+			memcpy( decrypt_bytes, shellcode, instruction_size );
+
+			bytes_filled += instruction_size;
+			bytes_to_fill -= instruction_size;
+			break;
+		}
+		case ANTISTACKFRAME:
+		{
+			unsigned char shellcode [ ] = {
+					0x48, 0x83, 0xec, 0x08,						// sub rsp, 8
+					0x48, 0x81, 0xfc, 0x00, 0x10, 0x00, 0x00,	// cmp rsp, 1000h
+					0x7c, 0x06,									// jl 6
+					0x48, 0x83, 0xc4, 0x08,						// add rsp, 8
+					0xeb, 0x07,									// jmp 7
+					0x48, 0x81, 0xc4, 0x08, 0x02, 0x00, 0x00,	// add rsp, 208h
+			};
+
+			const auto instruction_size = sizeof( shellcode );
+			const auto encrypt_bytes = encrypt_shellcode + bytes_filled;
+			const auto decrypt_bytes = decrypt_shellcode + shellcode_bytes - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+
+			memcpy( encrypt_bytes, shellcode, instruction_size );
+			memcpy( decrypt_bytes, shellcode, instruction_size );
+
+			bytes_filled += instruction_size;
+			bytes_to_fill -= instruction_size;
+			break;
 		}
 		case ADD_KEY:
 		{
@@ -310,19 +366,60 @@ void mxthmxn::ShellGen::generate( unsigned char* output_decrypt_shellcode, unsig
 
 		switch ( shellcode_type )
 		{
-			case ANTIDISASSEMBLY:
+			case ANTIDISASSEMBLY_JN:
 			{
-				unsigned char antidisassembly_shellcode [ ] = {
+				unsigned char shellcode [ ] = {
 						0x74, 0x03, 0x75, 0x01, 0xe8 // jz 3 jne 1 e8
 				};
-
-				const auto instruction_size = sizeof( antidisassembly_shellcode );
+				
+				const auto instruction_size = sizeof( shellcode );
 				const auto encrypt_bytes = output_encrypt_shellcode + sizeof( initial_shellcode ) + bytes_filled;
 				const auto decrypt_bytes = output_decrypt_shellcode + shellcode_size - sizeof( end_shellcode ) - bytes_filled - instruction_size;
-
-				memcpy( encrypt_bytes, antidisassembly_shellcode, instruction_size );
-				memcpy( decrypt_bytes, antidisassembly_shellcode, instruction_size );
-
+				
+				memcpy( encrypt_bytes, shellcode, instruction_size );
+				memcpy( decrypt_bytes, shellcode, instruction_size );
+				
+				bytes_filled += instruction_size;
+				bytes_to_fill -= instruction_size;
+				break;
+			}
+			case ANTIDISASSEMBLY_CALL:
+			{
+				unsigned char shellcode [ ] = {
+					0xe8, 0x00, 0x00, 0x00, 0x00, // call +5
+					0x83, 0x04, 0x24, 0x05,		  // add [rsp], 5
+					0xc3,						  // retn
+				};
+				
+				const auto instruction_size = sizeof( shellcode );
+				const auto encrypt_bytes = output_encrypt_shellcode + sizeof( initial_shellcode ) + bytes_filled;
+				const auto decrypt_bytes = output_decrypt_shellcode + shellcode_size - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+				
+				memcpy( encrypt_bytes, shellcode, instruction_size );
+				memcpy( decrypt_bytes, shellcode, instruction_size );
+				
+				bytes_filled += instruction_size;
+				bytes_to_fill -= instruction_size;
+				break;
+			}
+			case ANTISTACKFRAME:
+			{
+				unsigned char shellcode [ ] = {
+					0x48, 0x83, 0xec, 0x08,						// sub rsp, 8
+					0x48, 0x81, 0xfc, 0x00, 0x10, 0x00, 0x00,	// cmp rsp, 1000h
+					0x7c, 0x06,									// jl 6
+					0x48, 0x83, 0xc4, 0x08,						// add rsp, 8
+					0xeb, 0x07,									// jmp 7
+					0x48, 0x81, 0xc4, 0x08, 0x02, 0x00, 0x00,	// add rsp, 208h
+				};
+				
+				const auto instruction_size = sizeof( shellcode );
+				const auto encrypt_bytes = output_encrypt_shellcode + sizeof( initial_shellcode ) + bytes_filled;
+				const auto decrypt_bytes = output_decrypt_shellcode + shellcode_size - sizeof( end_shellcode ) - bytes_filled - instruction_size;
+				
+				memcpy( encrypt_bytes, shellcode, instruction_size );
+				memcpy( decrypt_bytes, shellcode, instruction_size );
+				
 				bytes_filled += instruction_size;
 				bytes_to_fill -= instruction_size;
 				break;
